@@ -5,56 +5,50 @@ import pandas as pd
 st.set_page_config(page_title="후원 타임스탬프 기록기", layout="centered")
 st.title("🎬 후원 타임스탬프 기록기 (Streamlit)")
 
-# 입력창: 방송 시작 시간
+# 사용자 입력: 방송 시작 시간
 start_str = st.text_input("방송 시작 시간 (YYYY-MM-DD HH:mm:ss)", "")
 
-# 세션 상태 초기화
+# 상태 초기화
 if "start_time" not in st.session_state:
     st.session_state["start_time"] = None
 if "data" not in st.session_state:
     st.session_state["data"] = pd.DataFrame(columns=["TimeStamp", "닉네임", "개수", "시그니처 이름", "1+1"])
-if "clicked_time_str" not in st.session_state:
-    st.session_state["clicked_time_str"] = None
+if "timestamps" not in st.session_state:
+    st.session_state["timestamps"] = []
 
 # 시작 시간 설정
 if st.button("✅ 시작 시간 설정"):
     try:
         st.session_state["start_time"] = datetime.strptime(start_str, "%Y-%m-%d %H:%M:%S")
         st.success(f"시작 시간 설정 완료: {st.session_state['start_time']}")
-    except:
+    except ValueError:
         st.error("형식이 올바르지 않습니다. 예: 2025-06-01 22:30:00")
 
-# 타임스탬프 버튼 클릭 → 현재 시간 문자열 저장
+# 타임스탬프 버튼
 if st.button("⏱ Time Stamp 추가"):
     if st.session_state["start_time"]:
-        st.session_state["clicked_time_str"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+        now = datetime.now()
+        diff = now - st.session_state["start_time"]
+        if diff.total_seconds() < 0:
+            diff = timedelta(seconds=0)
+        ts = str(diff).split(".")[0]
+        if len(ts.split(":")) == 2:
+            ts = "00:" + ts
+        st.session_state["timestamps"].append({
+            "TimeStamp": ts,
+            "닉네임": "",
+            "개수": "",
+            "시그니처 이름": "",
+            "1+1": False
+        })
     else:
         st.warning("먼저 방송 시작 시간을 설정하세요.")
 
-# 클릭 시간 문자열 → 타임스탬프 계산하여 새로운 행 추가
-if st.session_state["clicked_time_str"]:
-    clicked_time = datetime.strptime(st.session_state["clicked_time_str"], "%Y-%m-%d %H:%M:%S.%f")
-    diff = clicked_time - st.session_state["start_time"]
+# 리스트를 테이블로 변환
+if st.session_state["timestamps"]:
+    st.session_state["data"] = pd.DataFrame(st.session_state["timestamps"])
 
-    # 음수 시간은 00:00:00 처리
-    if diff.total_seconds() < 0:
-        diff = timedelta(seconds=0)
-
-    ts = str(diff).split('.')[0]
-    if len(ts.split(":")) == 2:
-        ts = "00:" + ts
-
-    new_row = pd.DataFrame([{
-        "TimeStamp": ts,
-        "닉네임": "",
-        "개수": "",
-        "시그니처 이름": "",
-        "1+1": False
-    }])
-    st.session_state["data"] = pd.concat([st.session_state["data"], new_row], ignore_index=True)
-    st.session_state["clicked_time_str"] = None
-
-# 편집 가능한 테이블 표시
+# 편집 UI
 edited_df = st.data_editor(
     st.session_state["data"],
     num_rows="dynamic",
@@ -65,8 +59,9 @@ edited_df = st.data_editor(
     }
 )
 st.session_state["data"] = edited_df
+st.session_state["timestamps"] = edited_df.to_dict("records")  # 업데이트
 
-# 저장 및 다운로드 버튼
+# 저장 및 다운로드
 if st.button("💾 저장 및 다운로드"):
     today = datetime.today().strftime("%y.%m.%d")
     filename = f"{today}_타임라인(플단리스트)(TimeStamp).txt"
