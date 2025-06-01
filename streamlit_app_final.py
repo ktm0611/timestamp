@@ -13,8 +13,8 @@ if "start_time" not in st.session_state:
     st.session_state["start_time"] = None
 if "data" not in st.session_state:
     st.session_state["data"] = pd.DataFrame(columns=["TimeStamp", "닉네임", "개수", "시그니처 이름", "1+1"])
-if "clicked_time" not in st.session_state:
-    st.session_state["clicked_time"] = None
+if "clicked_time_str" not in st.session_state:
+    st.session_state["clicked_time_str"] = None
 
 # 시작 시간 설정
 if st.button("✅ 시작 시간 설정"):
@@ -24,16 +24,17 @@ if st.button("✅ 시작 시간 설정"):
     except:
         st.error("형식이 올바르지 않습니다. 예: 2025-06-01 22:30:00")
 
-# 타임스탬프 버튼 클릭 → 현재 시간 저장
+# 타임스탬프 버튼 클릭 → 현재 시간 문자열 저장
 if st.button("⏱ Time Stamp 추가"):
     if st.session_state["start_time"]:
-        st.session_state["clicked_time"] = datetime.now()
+        st.session_state["clicked_time_str"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
     else:
         st.warning("먼저 방송 시작 시간을 설정하세요.")
 
-# 클릭 시간 → 타임스탬프 계산하여 새로운 행 추가
-if st.session_state["clicked_time"]:
-    diff = st.session_state["clicked_time"] - st.session_state["start_time"]
+# 클릭 시간 문자열 → 타임스탬프 계산하여 새로운 행 추가
+if st.session_state["clicked_time_str"]:
+    clicked_time = datetime.strptime(st.session_state["clicked_time_str"], "%Y-%m-%d %H:%M:%S.%f")
+    diff = clicked_time - st.session_state["start_time"]
 
     # 음수 시간은 00:00:00 처리
     if diff.total_seconds() < 0:
@@ -51,7 +52,7 @@ if st.session_state["clicked_time"]:
         "1+1": False
     }])
     st.session_state["data"] = pd.concat([st.session_state["data"], new_row], ignore_index=True)
-    st.session_state["clicked_time"] = None
+    st.session_state["clicked_time_str"] = None
 
 # 편집 가능한 테이블 표시
 edited_df = st.data_editor(
