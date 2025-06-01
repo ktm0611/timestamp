@@ -1,7 +1,9 @@
 import streamlit as st
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo  # Python 3.9 이상
 import pandas as pd
+import pytz
+
+kst = pytz.timezone("Asia/Seoul")  # 한국 시간대
 
 st.set_page_config(page_title="후원 타임스탬프 기록기", layout="centered")
 st.title("🎬 후원 타임스탬프 기록기 (KST 기준)")
@@ -20,16 +22,15 @@ if "timestamps" not in st.session_state:
 # 시작 시간 설정
 if st.button("✅ 시작 시간 설정"):
     try:
-        # 입력 시간은 로컬 시간(KST)으로 간주
-        st.session_state["start_time"] = datetime.strptime(start_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=ZoneInfo("Asia/Seoul"))
+        st.session_state["start_time"] = kst.localize(datetime.strptime(start_str, "%Y-%m-%d %H:%M:%S"))
         st.success(f"시작 시간 설정 완료: {st.session_state['start_time']}")
-    except ValueError:
+    except:
         st.error("형식이 올바르지 않습니다. 예: 2025-06-01 22:30:00")
 
-# TimeStamp 버튼 누르면 현재 시간 기준으로 경과 시간 계산
+# TimeStamp 버튼 → 정확한 클릭 시간 저장
 if st.button("⏱ Time Stamp 추가"):
     if st.session_state["start_time"]:
-        now_kst = datetime.now(ZoneInfo("Asia/Seoul"))
+        now_kst = datetime.now(kst)
         diff = now_kst - st.session_state["start_time"]
         if diff.total_seconds() < 0:
             diff = timedelta(seconds=0)
@@ -48,7 +49,7 @@ if st.button("⏱ Time Stamp 추가"):
     else:
         st.warning("먼저 방송 시작 시간을 설정하세요.")
 
-# 데이터 반영
+# 데이터프레임 갱신
 if st.session_state["timestamps"]:
     st.session_state["data"] = pd.DataFrame(st.session_state["timestamps"])
 
@@ -63,11 +64,11 @@ edited_df = st.data_editor(
     }
 )
 st.session_state["data"] = edited_df
-st.session_state["timestamps"] = edited_df.to_dict("records")  # 갱신
+st.session_state["timestamps"] = edited_df.to_dict("records")
 
 # 저장 및 다운로드
 if st.button("💾 저장 및 다운로드"):
-    today = datetime.now(ZoneInfo("Asia/Seoul")).strftime("%y.%m.%d")
+    today = datetime.now(kst).strftime("%y.%m.%d")
     filename = f"{today}_타임라인(플단리스트)(TimeStamp).txt"
 
     with open(filename, "w", encoding="utf-8") as f:
