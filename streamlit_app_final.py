@@ -80,4 +80,3 @@ if st.button("💾 저장 및 다운로드"):
 
     with open(filename, "rb") as f:
         st.download_button("📥 타임라인 파일 다운로드", f, file_name=filename, mime="text/plain")
-
